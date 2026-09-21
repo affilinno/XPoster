@@ -18,19 +18,31 @@ class NotLoggedInError(RuntimeError):
 
 
 def _dump_debug_state(page: Page) -> None:
-    """作成欄が見つからないときの原因調査用に、画面とURLを保存する。
+    """作成欄が見つからないときの原因調査用に、画面の状態をログへ直接出力する。
 
     セッション失効なのか、確認画面(チェックポイント等)なのか、
-    UI変更で単にセレクタが変わっただけなのかを後から判別するため。
+    UI変更で単にセレクタが変わっただけなのかを、Actionsのログだけで
+    判別できるようにする(アーティファクトのダウンロードを不要にする)。
     """
+    print(f"[debug] 現在のURL: {page.url}")
+    try:
+        print(f"[debug] タイトル: {page.title()}")
+    except Exception as e:
+        print(f"[debug] タイトル取得失敗: {e!r}")
+
+    try:
+        body_text = page.locator("body").inner_text(timeout=5_000)
+        print(f"[debug] body innerText (先頭1000文字):\n{body_text[:1000]}")
+    except Exception as e:
+        print(f"[debug] body innerText取得失敗: {e!r}")
+
     debug_dir = config.ROOT / "debug"
     debug_dir.mkdir(exist_ok=True)
-    print(f"[debug] 現在のURL: {page.url}")
-    with contextlib.suppress(Exception):
+    try:
         page.screenshot(path=str(debug_dir / "failure.png"), full_page=True)
-    with contextlib.suppress(Exception):
-        (debug_dir / "failure.html").write_text(page.content(), encoding="utf-8")
-    print(f"[debug] スクリーンショットとHTMLを {debug_dir} に保存しました。")
+        print(f"[debug] スクリーンショットを {debug_dir / 'failure.png'} に保存しました。")
+    except Exception as e:
+        print(f"[debug] スクリーンショット保存失敗: {e!r}")
 
 
 @contextlib.contextmanager

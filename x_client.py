@@ -119,15 +119,18 @@ def post_tweet(page: Page, text: str, image_paths: list | None = None) -> None:
     page.keyboard.press("Control+Enter")
 
     # 送信完了を確認: 作成欄が空に戻る or トーストが出る。
-    try:
-        page.wait_for_function(
-            """() => {
-                const el = document.querySelector('[data-testid="tweetTextarea_0"]');
-                return el && el.textContent.trim().length === 0;
-            }""",
-            timeout=config.ACTION_TIMEOUT_MS,
-        )
-    except PWTimeout:
+    # X の CSP (unsafe-eval 不許可) 下では wait_for_function がブロックされるため、
+    # ロケーター経由(CSPの影響を受けない)でポーリングする。
+    textarea = page.locator('[data-testid="tweetTextarea_0"]')
+    interval_ms = 300
+    cleared = False
+    for _ in range(max(1, config.ACTION_TIMEOUT_MS // interval_ms)):
+        if textarea.count() == 0 or (textarea.first.text_content() or "").strip() == "":
+            cleared = True
+            break
+        page.wait_for_timeout(interval_ms)
+
+    if not cleared:
         # フォールバック: 送信ボタンを明示的にクリック
         with contextlib.suppress(PWTimeout):
             btn = page.wait_for_selector(

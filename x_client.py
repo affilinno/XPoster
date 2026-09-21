@@ -17,6 +17,22 @@ class NotLoggedInError(RuntimeError):
     """保存済みセッションが無効(未ログイン)のときに送出。"""
 
 
+def _dump_debug_state(page: Page) -> None:
+    """作成欄が見つからないときの原因調査用に、画面とURLを保存する。
+
+    セッション失効なのか、確認画面(チェックポイント等)なのか、
+    UI変更で単にセレクタが変わっただけなのかを後から判別するため。
+    """
+    debug_dir = config.ROOT / "debug"
+    debug_dir.mkdir(exist_ok=True)
+    print(f"[debug] 現在のURL: {page.url}")
+    with contextlib.suppress(Exception):
+        page.screenshot(path=str(debug_dir / "failure.png"), full_page=True)
+    with contextlib.suppress(Exception):
+        (debug_dir / "failure.html").write_text(page.content(), encoding="utf-8")
+    print(f"[debug] スクリーンショットとHTMLを {debug_dir} に保存しました。")
+
+
 @contextlib.contextmanager
 def browser_page(storage_state: Path | None, headless: bool = True):
     """ブラウザ+ページを開くコンテキストマネージャ。
@@ -101,6 +117,7 @@ def post_tweet(page: Page, text: str, image_paths: list | None = None) -> None:
             '[data-testid="tweetTextarea_0"]', timeout=20_000
         )
     except PWTimeout as e:
+        _dump_debug_state(page)
         raise NotLoggedInError(
             "作成欄が見つかりません。セッションが失効した可能性があります。"
         ) from e

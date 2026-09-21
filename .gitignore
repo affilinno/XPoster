@@ -12,6 +12,9 @@ venv/
 playwright-report/
 test-results/
 
+# デバッグ用スクリーンショット/HTML(x_client.pyが失敗時に出力)
+debug/
+
 # 作業用メモ(リポジトリには含めない)
 memory/
 MEMORY.md

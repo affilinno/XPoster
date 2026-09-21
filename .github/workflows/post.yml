@@ -60,6 +60,14 @@ jobs:
             python post.py
           fi
 
+      - name: Upload debug artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-state
+          path: debug/
+          retention-days: 3
+
       - name: Commit schedule updates
         if: ${{ github.event.inputs.text == '' }}
         run: |
